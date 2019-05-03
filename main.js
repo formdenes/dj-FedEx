@@ -1,127 +1,158 @@
-function setup() {
-  createCanvas(125, 125);
-  pixelDensity(1);
-}
+const w = 100;
+const h = 100;
 
-function draw() {
+let alpha = 180;
 
-  const alpha = 180;
+let beta = 125;
 
-  const beta = 125;
+const minAlpha = 0;
+const maxAlpha = 5000;
 
+const minBeta = -250;
+const maxBeta = 250;
 
-  const pixelModel = tf.sequential();
+let pixelModel = tf.sequential();
+
+const createModel = () => {
+  pixelModel = tf.sequential();
 
   const hidden1 = tf.layers.dense({
 
-    units: 256,
+    units: maxBeta,
     inputShape: [4],
 
     activation: 'tanh',
     kernelInitializer: tf.initializers.randomNormal({
       mean: 0,
-      stddev: beta * (1 / 256),
+      stddev: beta * (1 / maxBeta),
     }),
   });
 
   const hidden2 = tf.layers.dense({
-    units: 256,
+    units: maxBeta,
 
     activation: 'tanh',
     kernelInitializer: tf.initializers.randomNormal({
       mean: 0,
-      stddev: beta * (1 / 256),
+      stddev: beta * (1 / maxBeta),
     }),
   });
 
 
   const hidden3 = tf.layers.dense({
-    units: 256,
+    units: maxBeta,
 
     activation: 'tanh',
     kernelInitializer: tf.initializers.randomNormal({
       mean: 0,
-      stddev: beta * (1 / 256),
+      stddev: beta * (1 / maxBeta),
     }),
   });
 
   const hidden4 = tf.layers.dense({
-    units: 256,
+    units: maxBeta,
     activation: 'tanh',
     kernelInitializer: tf.initializers.randomNormal({
       mean: 0,
-      stddev: beta * (1 / 256),
+      stddev: beta * (1 / maxBeta),
     }),
   });
-  
+
   const output = tf.layers.dense({
     units: 3,
     activation: 'tanh',
 
     kernelInitializer: tf.initializers.randomNormal({
       mean: 0,
-      stddev: beta * (1 / 256),
+      stddev: beta * (1 / maxBeta),
     }),
 
   });
-  
+
   pixelModel.add(hidden1);
-  tf.print(hidden1.getWeights())
-  console.log(hidden1.getWeights())
+  /* tf.print(hidden1.getWeights())
+  console.log(hidden1.getWeights()) */
   pixelModel.add(hidden2);
   pixelModel.add(hidden3);
   pixelModel.add(hidden4);
   pixelModel.add(output);
+}
 
-  /*   pixelModel.compile({
-      optimizer: 'sgd',
-      loss: 'meanSquaredError',
-    }); */
-  //pixelModel.summary();
+const makeInputs = (inputWidth, inputHeight) => {
+  let coordinates = [];
+  for (let i = 0; i < inputWidth; i++) {
+    for (let j = 0; j < inputHeight; j++) {
+      coordinates.push([i, j, alpha, Math.sqrt(i * i + j * j)])
 
-  const makeInputs = (inputWidth, inputHeight) => {
-    let coordinates = [];
-    for (let i = 0; i < inputWidth; i++) {
-      for (let j = 0; j < inputHeight; j++) {
-        coordinates.push([i, j, alpha, Math.sqrt(i * i + j * j)])
-
-      }
     }
-    return coordinates;
   }
+  return coordinates;
+}
 
-  const input = tf.tensor2d(
-    makeInputs(width, height)
-  )
 
-  const outputs = pixelModel.predict(input);
-  tf.print(outputs);
 
-  let pixelValues;
-
-  outputs.data().then(data => {
-    const [min, max] = [Math.min(...data), Math.max(...data)];
-    console.log(min, max);
-    pixelValues = data.map((val, index) => {
-      /*  console.log('nem mappelt', val)
-       console.log(index, map(val, 0, 1, 0, 255)) */
-      return map(val, -1, 1, 0, 255);
+const getOutput = () => {
+  tf.tidy(() => {
+    createModel();
+    const input = tf.tensor2d(makeInputs(w, h))
+    const outputs = pixelModel.predict(input);
+    //tf.print(outputs);
+    outputs.data().then(data => {
+      const [min, max] = [Math.min(...data), Math.max(...data)];
+      console.log(min, max);
+      pixelValues = data.map((val, index) => {
+        /*  console.log('nem mappelt', val)
+        console.log(index, map(val, 0, 1, 0, 255)) */
+        return map(val, -1, 1, 0, 255);
+      });
+      console.log(pixelValues)
+      console.log('the memory useage',tf.memory());
     });
-    //console.log('Greyscale values',pixelValues);
-    loadPixels();
-
-    for (let i = 0; i < width * height; i += 1) {
-
-      pixels[i * 4 + 0] = (pixelValues[i * 3 + 0]);
-      pixels[i * 4 + 1] = (pixelValues[i * 3 + 1]);
-      pixels[i * 4 + 2] = (pixelValues[i * 3 + 2]);
-      pixels[i * 4 + 3] = 255;
-    }
-    updatePixels();
-    console.log('done');
   });
+}
 
-  /*   background(51); */
+let pixelValues = [];
 
-  noLoop();
+
+
+function setup() {
+  createP('My realy beautifull drawing')
+  createCanvas(w, h);
+  alphaSlider = createSlider(minAlpha,maxAlpha,alpha);
+  alphaSlider.changed(() => {
+    alpha = alphaSlider.value();
+    console.log('alpha',alpha);
+    getOutput();
+  });
+  betaSlider = createSlider(minBeta,maxBeta, beta);
+  betaSlider.changed(() => {
+    beta = betaSlider.value();
+    console.log('beta', beta)
+    getOutput();
+  })
+  pixelDensity(1);
+
+  getOutput();
+  
+}
+
+function draw() {  
+  //console.log('Greyscale values',pixelValues);
+  background(51);
+  loadPixels();
+
+  for (let i = 0; i < width * height; i += 1) {
+
+    pixels[i * 4 + 0] = (pixelValues[i * 3 + 0]);
+    pixels[i * 4 + 1] = (pixelValues[i * 3 + 1]);
+    pixels[i * 4 + 2] = (pixelValues[i * 3 + 2]);
+    pixels[i * 4 + 3] = 255;
+    //console.log(i);
+  }
+  updatePixels();
+  //console.log('done');
+  
+
+
+//  noLoop();
 }
