@@ -1,8 +1,9 @@
-const w = 100;
-const h = 100;
+const w = 150;
+const h = 150;
+const scale = 1;
+
 
 let alpha = 180;
-
 let beta = 125;
 
 const minAlpha = 0;
@@ -10,6 +11,8 @@ const maxAlpha = 5000;
 
 const minBeta = -250;
 const maxBeta = 250;
+
+let outputNumber = 3;
 
 let pixelModel = tf.sequential();
 
@@ -59,7 +62,7 @@ const createModel = () => {
   });
 
   const output = tf.layers.dense({
-    units: 3,
+    units: outputNumber,
     activation: 'tanh',
 
     kernelInitializer: tf.initializers.randomNormal({
@@ -70,8 +73,6 @@ const createModel = () => {
   });
 
   pixelModel.add(hidden1);
-  /* tf.print(hidden1.getWeights())
-  console.log(hidden1.getWeights()) */
   pixelModel.add(hidden2);
   pixelModel.add(hidden3);
   pixelModel.add(hidden4);
@@ -89,23 +90,17 @@ const makeInputs = (inputWidth, inputHeight) => {
   return coordinates;
 }
 
-
-
 const getOutput = () => {
   tf.tidy(() => {
+    pixelValues = [];
     createModel();
     const input = tf.tensor2d(makeInputs(w, h))
     const outputs = pixelModel.predict(input);
-    //tf.print(outputs);
     outputs.data().then(data => {
       const [min, max] = [Math.min(...data), Math.max(...data)];
-      console.log(min, max);
       pixelValues = data.map((val, index) => {
-        /*  console.log('nem mappelt', val)
-        console.log(index, map(val, 0, 1, 0, 255)) */
         return map(val, -1, 1, 0, 255);
       });
-      console.log(pixelValues)
       console.log('the memory useage',tf.memory());
     });
   });
@@ -117,42 +112,45 @@ let pixelValues = [];
 
 function setup() {
   createP('My realy beautifull drawing')
-  createCanvas(w, h);
+  createCanvas(w*scale, h*scale);
+  bwCheckbox = createCheckbox('B&W', false);
+  bwCheckbox.changed(() => {
+    outputNumber = outputNumber === 3 ? 1 : 3;
+    getOutput();
+  })
   alphaSlider = createSlider(minAlpha,maxAlpha,alpha);
   alphaSlider.changed(() => {
     alpha = alphaSlider.value();
-    console.log('alpha',alpha);
     getOutput();
   });
   betaSlider = createSlider(minBeta,maxBeta, beta);
   betaSlider.changed(() => {
     beta = betaSlider.value();
-    console.log('beta', beta)
     getOutput();
-  })
-  pixelDensity(1);
+  });
+  shapeSelection = createSelect();
+  shapeSelection.option('Random');
+  shapeSelection.option('Circilar');
+  shapeSelection.option('Carpet');
+  shapeSelection.changed(() => {
+
+  });
+  pixelDensity(1/scale);
 
   getOutput();
   
 }
 
-function draw() {  
-  //console.log('Greyscale values',pixelValues);
+function draw() {
   background(51);
   loadPixels();
 
   for (let i = 0; i < width * height; i += 1) {
-
-    pixels[i * 4 + 0] = (pixelValues[i * 3 + 0]);
-    pixels[i * 4 + 1] = (pixelValues[i * 3 + 1]);
-    pixels[i * 4 + 2] = (pixelValues[i * 3 + 2]);
+    pixels[i * 4 + 0] = (pixelValues[i * outputNumber + 0 * Math.floor(outputNumber / 3)]);
+    pixels[i * 4 + 1] = (pixelValues[i * outputNumber + 1 * Math.floor(outputNumber / 3)]);
+    pixels[i * 4 + 2] = (pixelValues[i * outputNumber + 2 * Math.floor(outputNumber / 3)]);
     pixels[i * 4 + 3] = 255;
-    //console.log(i);
   }
   updatePixels();
-  //console.log('done');
-  
-
-
-//  noLoop();
+  //  noLoop();
 }
