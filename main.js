@@ -1,6 +1,6 @@
 const w = 150;
 const h = 150;
-const scale = 1;
+const scale = 2;
 
 
 let alpha = 180;
@@ -13,6 +13,22 @@ const minBeta = -250;
 const maxBeta = 250;
 
 let outputNumber = 3;
+let inputNumber = 4;
+
+let currentShape = 'Random';
+
+const inputs = (shape, x, y, alpha) => {
+  switch (shape) {
+    case 'Random':
+      return [x, y, alpha, Math.sqrt(x * x + y * y)];
+      break;
+    case 'Circular':
+      return [alpha, x, y, (x * x + y * y)];
+      break;
+    case 'Carpet':
+      return [alpha, Math.cos(x), Math.sin(y)]
+  }
+}
 
 let pixelModel = tf.sequential();
 
@@ -22,7 +38,7 @@ const createModel = () => {
   const hidden1 = tf.layers.dense({
 
     units: maxBeta,
-    inputShape: [4],
+    inputShape: [inputNumber],
 
     activation: 'tanh',
     kernelInitializer: tf.initializers.randomNormal({
@@ -79,12 +95,11 @@ const createModel = () => {
   pixelModel.add(output);
 }
 
-const makeInputs = (inputWidth, inputHeight) => {
+const makeInputs = (inputWidth, inputHeight, shape) => {
   let coordinates = [];
   for (let i = 0; i < inputWidth; i++) {
     for (let j = 0; j < inputHeight; j++) {
-      coordinates.push([i, j, alpha, Math.sqrt(i * i + j * j)])
-
+      coordinates.push(inputs(currentShape, i, j, alpha))
     }
   }
   return coordinates;
@@ -94,7 +109,7 @@ const getOutput = () => {
   tf.tidy(() => {
     pixelValues = [];
     createModel();
-    const input = tf.tensor2d(makeInputs(w, h))
+    const input = tf.tensor2d(makeInputs(w, h, currentShape))
     const outputs = pixelModel.predict(input);
     outputs.data().then(data => {
       const [min, max] = [Math.min(...data), Math.max(...data)];
@@ -107,33 +122,51 @@ const getOutput = () => {
 }
 
 let pixelValues = [];
+let alphaLabel;
+let betalLabel;
+let alphaDiv;
+let betaDiv;
 
 
 
 function setup() {
-  createP('My realy beautifull drawing')
+  let header = createP('Neuro Images');
+  header.addClass('header');
   createCanvas(w*scale, h*scale);
   bwCheckbox = createCheckbox('B&W', false);
+  bwCheckbox.addClass('checkbox');
   bwCheckbox.changed(() => {
     outputNumber = outputNumber === 3 ? 1 : 3;
     getOutput();
   })
+  alphaDiv = createDiv();
+  alphaDiv.addClass('sliderDiv');
+  alphaLabel = createP(`A: ${alpha}`);
+  alphaDiv.child(alphaLabel);
   alphaSlider = createSlider(minAlpha,maxAlpha,alpha);
+  alphaDiv.child(alphaSlider);
   alphaSlider.changed(() => {
     alpha = alphaSlider.value();
     getOutput();
   });
+  betaDiv = createDiv();
+  betaDiv.addClass('sliderDiv');
+  betaLabel = createP(`B: ${beta}`);
+  betaDiv.child(betaLabel);
   betaSlider = createSlider(minBeta,maxBeta, beta);
+  betaDiv.child(betaSlider);
   betaSlider.changed(() => {
     beta = betaSlider.value();
     getOutput();
   });
   shapeSelection = createSelect();
   shapeSelection.option('Random');
-  shapeSelection.option('Circilar');
+  shapeSelection.option('Circular');
   shapeSelection.option('Carpet');
   shapeSelection.changed(() => {
-
+    inputNumber = shapeSelection.value() === 'Carpet' ? 3 : 4;
+    currentShape = shapeSelection.value();
+    getOutput();
   });
   pixelDensity(1/scale);
 
@@ -142,6 +175,8 @@ function setup() {
 }
 
 function draw() {
+  alphaLabel.html(`A: ${alpha}`);
+  betaLabel.html(`B: ${beta}`);
   background(51);
   loadPixels();
 

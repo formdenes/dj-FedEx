@@ -13,3 +13,26 @@ p{
 label {
   color: white;
 }
+
+.sliderDiv {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 5px;
+}
+
+.sliderDiv p{
+  margin: 0;
+}
+
+.header {
+  font-size: 30px;
+  text-align: center;
+}
+
+.checkbox{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 10px;
+}
